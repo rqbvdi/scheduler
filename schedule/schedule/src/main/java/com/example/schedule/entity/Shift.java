@@ -48,6 +48,10 @@ public class Shift {
     @Column
     private String notes;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_id", nullable = false, updatable = false)
+    private Employee createdBy;
+
     @CreationTimestamp
     @Column(updatable = false)
     private ZonedDateTime createdAt;

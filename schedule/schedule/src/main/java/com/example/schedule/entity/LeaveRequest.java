@@ -2,8 +2,12 @@ package com.example.schedule.entity;
 
 import com.example.schedule.entity.enums.RequestStatus;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.io.Serializable;
 import java.time.ZonedDateTime;
@@ -11,10 +15,14 @@ import java.time.ZonedDateTime;
 @Data
 @Entity
 @Table(name = "leave_request")
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class LeaveRequest implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", columnDefinition = "serial")
     private Long id;
 
     @ManyToOne(optional = false)
@@ -38,4 +46,7 @@ public class LeaveRequest implements Serializable {
 
     @CreationTimestamp
     private ZonedDateTime createdAt;
+
+    @UpdateTimestamp
+    private ZonedDateTime updatedAt;
 }

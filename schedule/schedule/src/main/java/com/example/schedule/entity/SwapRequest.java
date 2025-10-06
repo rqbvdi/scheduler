@@ -17,30 +17,40 @@ public class SwapRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "requested_shift_id", nullable = false)
     private Shift requestedShift;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "offered_shift_id", nullable = false)
     private Shift offeredShift;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "requester_id", nullable = false)
-    private Employee requester;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "employee_from", nullable = false)
+    private Employee employeeFrom;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "receiver_id", nullable = false)
-    private Employee receiver;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "employee_to", nullable = false)
+    private Employee employeeTo;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RequestStatus status = RequestStatus.PENDING;
 
+    @Column(columnDefinition = "TEXT")
+    private String reason;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    private Employee approvedBy;
+
+    private ZonedDateTime approvedAt;
+
     @CreationTimestamp
-    @Column(updatable = false)
+    @Column(updatable = false, nullable = false)
     private ZonedDateTime createdAt;
 
     @UpdateTimestamp
+    @Column(nullable = false)
     private ZonedDateTime updatedAt;
 }
