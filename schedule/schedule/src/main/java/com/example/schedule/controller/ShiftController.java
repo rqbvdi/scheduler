@@ -3,11 +3,10 @@ package com.example.schedule.controller;
 import com.example.schedule.dto.ShiftDto;
 import com.example.schedule.entity.Employee;
 import com.example.schedule.service.ShiftService;
-import com.example.schedule.repository.EmployeeRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -19,19 +18,12 @@ import java.util.List;
 public class ShiftController {
 
     private final ShiftService shiftService;
-    private final EmployeeRepository employeeRepository;
 
-    // Helper to get the authenticated employee (stub, replace with actual auth)
-    private Employee getRequester() {
-        // TODO: Replace with actual authentication logic (e.g., Spring Security principal)
-        return employeeRepository.findById(1L).orElseThrow(() -> new EntityNotFoundException("Requester not found"));
-    }
-
-    // --- GET ALL SHIFTS (ADMIN only) ---
+    // --- GET ALL SHIFTS ---
     @GetMapping
-    public ResponseEntity<List<ShiftDto>> getAll() {
+    public ResponseEntity<List<ShiftDto>> getAll(@AuthenticationPrincipal Employee user) {
         try {
-            return ResponseEntity.ok(shiftService.getAll(getRequester()));
+            return ResponseEntity.ok(shiftService.getAll(user));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
@@ -39,11 +31,10 @@ public class ShiftController {
 
     // --- GET SHIFT BY ID ---
     @GetMapping("/{id}")
-    public ResponseEntity<ShiftDto> getById(@PathVariable Long id) {
+    public ResponseEntity<ShiftDto> getById(@AuthenticationPrincipal Employee user,
+                                            @PathVariable Long id) {
         try {
-            return ResponseEntity.ok(shiftService.getById(id, getRequester()));
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.ok(shiftService.getById(id, user));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
@@ -51,9 +42,10 @@ public class ShiftController {
 
     // --- GET SHIFTS FOR EMPLOYEE ---
     @GetMapping("/employee/{employeeId}")
-    public ResponseEntity<List<ShiftDto>> getByEmployee(@PathVariable Long employeeId) {
+    public ResponseEntity<List<ShiftDto>> getByEmployee(@AuthenticationPrincipal Employee user,
+                                                        @PathVariable Long employeeId) {
         try {
-            return ResponseEntity.ok(shiftService.getByEmployee(employeeId, getRequester()));
+            return ResponseEntity.ok(shiftService.getByEmployee(employeeId, user));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
@@ -61,15 +53,14 @@ public class ShiftController {
 
     // --- GET SHIFTS IN DATE RANGE ---
     @GetMapping("/range")
-    public ResponseEntity<List<ShiftDto>> getInDateRange(
-            @RequestParam("start") String start,
-            @RequestParam("end") String end
-    ) {
+    public ResponseEntity<List<ShiftDto>> getInDateRange(@AuthenticationPrincipal Employee user,
+                                                         @RequestParam("start") String start,
+                                                         @RequestParam("end") String end) {
         LocalDate startDate = LocalDate.parse(start);
         LocalDate endDate = LocalDate.parse(end);
 
         try {
-            return ResponseEntity.ok(shiftService.getInDateRange(startDate, endDate, getRequester()));
+            return ResponseEntity.ok(shiftService.getInDateRange(startDate, endDate, user));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
@@ -77,12 +68,11 @@ public class ShiftController {
 
     // --- CREATE SHIFT ---
     @PostMapping
-    public ResponseEntity<ShiftDto> create(@RequestBody ShiftDto dto) {
+    public ResponseEntity<ShiftDto> create(@AuthenticationPrincipal Employee user,
+                                           @RequestBody ShiftDto dto) {
         try {
-            ShiftDto created = shiftService.create(dto, getRequester());
+            ShiftDto created = shiftService.create(dto, user);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.badRequest().build();
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
@@ -90,11 +80,11 @@ public class ShiftController {
 
     // --- UPDATE SHIFT ---
     @PutMapping("/{id}")
-    public ResponseEntity<ShiftDto> update(@PathVariable Long id, @RequestBody ShiftDto dto) {
+    public ResponseEntity<ShiftDto> update(@AuthenticationPrincipal Employee user,
+                                           @PathVariable Long id,
+                                           @RequestBody ShiftDto dto) {
         try {
-            return ResponseEntity.ok(shiftService.update(id, dto, getRequester()));
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.ok(shiftService.update(id, dto, user));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
@@ -102,12 +92,11 @@ public class ShiftController {
 
     // --- DELETE SHIFT ---
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@AuthenticationPrincipal Employee user,
+                                       @PathVariable Long id) {
         try {
-            shiftService.delete(id, getRequester());
+            shiftService.delete(id, user);
             return ResponseEntity.noContent().build();
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.notFound().build();
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }

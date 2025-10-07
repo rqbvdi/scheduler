@@ -1,86 +1,57 @@
 package com.example.schedule.security;
 
-import com.example.schedule.service.security.CustomUserDetailsService;
-import com.example.schedule.security.JwtAuthFilter;
+import com.example.schedule.security.services.CustomUserDetailsService;
+import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 
 @Configuration
-@EnableWebSecurity
+@AllArgsConstructor
+@EnableMethodSecurity
 public class SecurityConfig {
 
-    private final CustomUserDetailsService userDetailsService;
-    private final JwtAuthFilter jwtAuthFilter;
-    private final AuthEntryPoint authEntryPoint;
+    @Autowired
+    private CustomUserDetailsService userDetailsService;
 
-    public SecurityConfig(CustomUserDetailsService userDetailsService,
-                          JwtAuthFilter jwtAuthFilter,
-                          AuthEntryPoint authEntryPoint) {
-        this.userDetailsService = userDetailsService;
-        this.jwtAuthFilter = jwtAuthFilter;
-        this.authEntryPoint = authEntryPoint;
-    }
+    @Autowired
+    private AuthEntryPoint unauthorizedHandler;
 
-    // ✅ Password encoder
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // ✅ Authentication provider
-    @Bean
-    public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder());
-        return provider;
-    }
-
-    // ✅ Authentication manager (needed for login)
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
-    }
-
-    // ✅ Security filter chain (Spring Security 6.1+ style)
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // Disable CSRF for APIs
                 .csrf(csrf -> csrf.disable())
-
-                // Exception handling
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(authEntryPoint)
-                )
-
-                // Session management → stateless for JWT
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.STATELESS)
-                )
-
-                // Authorization rules
+                .headers(h -> h.frameOptions(fo -> fo.sameOrigin()))
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedHandler))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()  // login, register open
-                        .requestMatchers("/h2-console/**").permitAll() // dev only
-                        .anyRequest().authenticated()
-                )
-
-                // Add JWT filter before Spring’s authentication
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-
-        // Allow H2 console frames
-        http.headers(headers -> headers.frameOptions(frame -> frame.disable()));
+                        .requestMatchers("/", "/ui/**", "/error", "/api/login").permitAll()
+                        .requestMatchers("/api/logout", "/api/**").authenticated()
+                );
 
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
+    }
+
+    @Bean
+    public SecurityContextRepository securityContextRepository() {
+        return new HttpSessionSecurityContextRepository();
     }
 }

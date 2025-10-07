@@ -1,75 +1,59 @@
 package com.example.schedule.service;
 
-import com.example.schedule.entity.LeaveRequest;
 import com.example.schedule.entity.Employee;
-import com.example.schedule.entity.enums.RequestStatus;
+import com.example.schedule.entity.LeaveRequest;
 import com.example.schedule.entity.enums.Role;
+import com.example.schedule.entity.enums.RequestStatus;
 import com.example.schedule.repository.LeaveRequestRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.ZonedDateTime;
+import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
+@Transactional
 public class LeaveRequestService {
 
     private final LeaveRequestRepository repository;
 
-    public LeaveRequestService(LeaveRequestRepository repository) {
-        this.repository = repository;
+    public List<LeaveRequest> getAll(Employee currentUser) {
+        if (currentUser.getRole() == Role.ADMIN) {
+            return repository.findAll();
+        } else {
+            return repository.findByEmployee(currentUser);
+        }
     }
 
-    public List<LeaveRequest> getAllRequests() {
-        return repository.findAll();
+    public LeaveRequest getById(Long id, Employee currentUser) {
+        LeaveRequest request = repository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("LeaveRequest not found"));
+
+        if (currentUser.getRole() != Role.ADMIN && !request.getEmployee().getId().equals(currentUser.getId())) {
+            throw new SecurityException("Not allowed");
+        }
+
+        return request;
     }
 
-    public LeaveRequest getRequest(Long id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Request not found"));
-    }
-
-    @Transactional
-    public LeaveRequest createRequest(LeaveRequest request) {
+    public LeaveRequest create(LeaveRequest request) {
         request.setStatus(RequestStatus.PENDING);
         return repository.save(request);
     }
 
-    @Transactional
-    public LeaveRequest approveRequest(Long id, Long approverId, Role role) {
-        LeaveRequest request = getRequest(id);
-
-        if (role != Role.ADMIN) throw new SecurityException("Only admin can approve requests");
-
+    public LeaveRequest approve(Long id, Employee adminUser) {
+        if (adminUser.getRole() != Role.ADMIN) throw new SecurityException("Only admin can approve");
+        LeaveRequest request = getById(id, adminUser);
         request.setStatus(RequestStatus.APPROVED);
-        request.setApprovedBy(approverId);
-        request.setApprovedAt(ZonedDateTime.now());
         return repository.save(request);
     }
 
-    @Transactional
-    public LeaveRequest rejectRequest(Long id, Long approverId, Role role) {
-        LeaveRequest request = getRequest(id);
-
-        if (role != Role.ADMIN) throw new SecurityException("Only admin can reject requests");
-
+    public LeaveRequest reject(Long id, Employee adminUser) {
+        if (adminUser.getRole() != Role.ADMIN) throw new SecurityException("Only admin can reject");
+        LeaveRequest request = getById(id, adminUser);
         request.setStatus(RequestStatus.REJECTED);
-        request.setApprovedBy(approverId);
-        request.setApprovedAt(ZonedDateTime.now());
-        return repository.save(request);
-    }
-
-    @Transactional
-    public LeaveRequest cancelRequest(Long id, Employee employee, Role role) {
-        LeaveRequest request = getRequest(id);
-
-        if (role != Role.ADMIN && !request.getEmployee().getId().equals(employee.getId())) {
-            throw new SecurityException("Cannot cancel others' requests");
-        }
-
-        request.setStatus(RequestStatus.CANCELLED);
-        request.setApprovedBy(role == Role.ADMIN ? employee.getId() : null);
-        request.setApprovedAt(ZonedDateTime.now());
         return repository.save(request);
     }
 }
