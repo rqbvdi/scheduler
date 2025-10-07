@@ -49,6 +49,12 @@ public class Employee implements Serializable {
     @Column(name = "role", nullable = false)
     private Role role;
 
+    @Column(unique = true, nullable = false)
+    private String username;
+
+    @Column(nullable = false)
+    private String password;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private ZonedDateTime created_at;
